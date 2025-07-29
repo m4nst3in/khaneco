@@ -1,6 +1,6 @@
 const ver = "V3.1.2";
 
-const repoPath = `https://raw.githubusercontent.com/m4nst3in/khan/refs/heads/main/`;
+const repoPath = `https://raw.githubusercontent.com/m4nst3in/khaneco/refs/heads/main/`;
 
 let device = {
     mobile: /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Windows Phone|Mobile|Tablet|Kindle|Silk|PlayBook|BB10/i.test(navigator.userAgent),
