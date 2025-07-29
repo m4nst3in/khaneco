@@ -247,7 +247,8 @@ showSplashScreen();
         await delay(500);
         await setupMain();
         
-        console.clear();
+        // Console não será limpo para debug
+        console.log('🎯 Carregamento do Khaneco concluído!');
         
     } catch (error) {
         console.error('Erro durante o carregamento do Khaneco:', error);
