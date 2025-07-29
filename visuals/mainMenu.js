@@ -20,33 +20,34 @@ class KhanecoUI {
         const styles = `
             <style id="khaneco-styles">
                 .khaneco-watermark {
-                    position: fixed;
-                    top: 20px;
-                    right: 20px;
-                    width: 60px;
-                    height: 60px;
-                    background: white;
-                    border: 2px solid #dc2626;
-                    border-radius: 50%;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    cursor: pointer;
-                    z-index: 10000;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-                    transition: all 0.3s ease;
-                    font-family: 'MuseoSans', Arial, sans-serif;
+                    position: fixed !important;
+                    top: 20px !important;
+                    right: 20px !important;
+                    width: 60px !important;
+                    height: 60px !important;
+                    background: white !important;
+                    border: 3px solid #dc2626 !important;
+                    border-radius: 50% !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    cursor: pointer !important;
+                    z-index: 999999 !important;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+                    transition: all 0.3s ease !important;
+                    font-family: 'MuseoSans', Arial, sans-serif !important;
                 }
 
                 .khaneco-watermark:hover {
-                    transform: scale(1.05);
-                    box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+                    transform: scale(1.1) !important;
+                    box-shadow: 0 6px 20px rgba(220, 38, 38, 0.3) !important;
+                    border-color: #ef4444 !important;
                 }
 
                 .khaneco-icon {
-                    width: 30px;
-                    height: 30px;
-                    fill: #dc2626;
+                    width: 35px !important;
+                    height: 35px !important;
+                    display: block !important;
                 }
 
                 .khaneco-panel {
@@ -314,24 +315,43 @@ class KhanecoUI {
     }
 
     createWatermark() {
+        // Remover qualquer watermark existente
+        const existing = document.querySelector('.khaneco-watermark');
+        if (existing) existing.remove();
+
         this.watermark = document.createElement('div');
         this.watermark.className = 'khaneco-watermark';
+        this.watermark.title = 'Clique para abrir o Khaneco';
         this.watermark.innerHTML = `
-            <svg class="khaneco-icon" viewBox="0 0 100 100">
-                <path d="M20 25 L20 75 C20 82 27 85 30 85 L60 85 C63 85 70 82 70 75 L70 25 Z" />
-                <path d="M70 35 C75 35 80 40 80 45 L80 55 C80 60 75 65 70 65" fill="none" stroke="currentColor" stroke-width="2"/>
-                <circle cx="35" cy="15" r="1.5" opacity="0.7">
+            <svg class="khaneco-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <!-- Corpo da caneca -->
+                <path d="M20 25 L20 75 C20 82 27 85 30 85 L60 85 C63 85 70 82 70 75 L70 25 Z" 
+                      fill="#dc2626" stroke="#dc2626" stroke-width="1"/>
+                <!-- Alça da caneca -->
+                <path d="M70 35 C75 35 80 40 80 45 L80 55 C80 60 75 65 70 65" 
+                      fill="none" stroke="#dc2626" stroke-width="3"/>
+                <!-- Vapor 1 -->
+                <circle cx="35" cy="15" r="1.5" fill="#dc2626" opacity="0.7">
                     <animate attributeName="opacity" values="0.3;0.7;0.3" dur="2s" repeatCount="indefinite"/>
                 </circle>
-                <circle cx="45" cy="12" r="1.5" opacity="0.5">
+                <!-- Vapor 2 -->
+                <circle cx="45" cy="12" r="1.5" fill="#dc2626" opacity="0.5">
                     <animate attributeName="opacity" values="0.2;0.6;0.2" dur="2.5s" repeatCount="indefinite"/>
                 </circle>
-                <circle cx="55" cy="15" r="1.5" opacity="0.6">
+                <!-- Vapor 3 -->
+                <circle cx="55" cy="15" r="1.5" fill="#dc2626" opacity="0.6">
                     <animate attributeName="opacity" values="0.4;0.8;0.4" dur="1.8s" repeatCount="indefinite"/>
                 </circle>
             </svg>
         `;
+        
+        // Adicionar evento de clique
+        this.watermark.addEventListener('click', () => {
+            this.showPanel();
+        });
+        
         document.body.appendChild(this.watermark);
+        console.log('🎨 Ícone da caneca criado e adicionado ao DOM');
     }
 
     createMainPanel() {
@@ -459,11 +479,6 @@ class KhanecoUI {
     }
 
     setupEventListeners() {
-        // Toggle do watermark
-        this.watermark.addEventListener('click', () => {
-            this.togglePanel();
-        });
-
         // Botão de fechar
         this.panel.querySelector('.khaneco-close').addEventListener('click', () => {
             this.hidePanel();
@@ -617,11 +632,47 @@ class KhanecoUI {
 (() => {
     const initUI = () => {
         if (document.body && window.user) {
+            // Forçar a criação da interface
             window.khanecoUI = new KhanecoUI();
-            sendToast("🎨 Interface moderna carregada!", 3000);
+            
+            // Verificar se o ícone foi criado após um pequeno delay
+            setTimeout(() => {
+                const watermark = document.querySelector('.khaneco-watermark');
+                if (!watermark) {
+                    console.warn('🔄 Ícone não encontrado, tentando recriar...');
+                    window.khanecoUI.createWatermark();
+                }
+                console.log('🎨 Interface Khaneco carregada! Use khanecoUI.showPanel() para abrir o menu.');
+                sendToast("🎨 Interface carregada! Procure pelo ícone da caneca no canto superior direito.", 6000);
+            }, 500);
         } else {
             setTimeout(initUI, 100);
         }
     };
-    initUI();
+    
+    // Inicializar imediatamente se possível
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initUI);
+    } else {
+        initUI();
+    }
 })();
+
+// Função global para abrir o menu via console (fallback)
+window.openKhanecoMenu = () => {
+    if (window.khanecoUI) {
+        window.khanecoUI.showPanel();
+    } else {
+        console.log('❌ Interface ainda não carregada. Aguarde ou recarregue a página...');
+    }
+};
+
+// Função para forçar a recriação do ícone
+window.recreateKhanecoIcon = () => {
+    if (window.khanecoUI) {
+        window.khanecoUI.createWatermark();
+        console.log('✅ Ícone da caneca recriado!');
+    } else {
+        console.log('❌ Interface não carregada ainda.');
+    }
+};
