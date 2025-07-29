@@ -145,11 +145,17 @@ async function loadCss(url) {
 }
 
 async function setupMenu() {
-    await loadScript(repoPath+'visuals/mainMenu.js', 'mainMenu');
-    await delay(200);
-    await loadScript(repoPath+'visuals/statusPanel.js', 'statusPanel');
-    await delay(200);
-    await loadScript(repoPath+'visuals/widgetBot.js', 'widgetBot');
+    try {
+        await loadScript(repoPath+'visuals/mainMenu.js', 'mainMenu');
+        await delay(200);
+        await loadScript(repoPath+'visuals/statusPanel.js', 'statusPanel');
+        await delay(200);
+        await loadScript(repoPath+'visuals/widgetBot.js', 'widgetBot');
+    } catch (error) {
+        console.warn('Erro ao carregar módulos visuais:', error);
+        // Criar interface básica se falhar
+        createBasicInterface();
+    }
 }
 
 async function setupMain(){
@@ -174,6 +180,14 @@ if (!/^https?:\/\/([a-z0-9-]+\.)?khanacademy\.org/.test(window.location.href)) {
 
 showSplashScreen();
 
+// Criar ícone de emergência após 5 segundos se nada carregar
+setTimeout(() => {
+    if (!document.querySelector('.khaneco-watermark') && !document.querySelector('.khaneco-basic-icon')) {
+        console.log('🚨 Timeout atingido, criando interface de emergência...');
+        createBasicInterface();
+    }
+}, 5000);
+
 // Carregamento sequencial para evitar erro 429
 (async () => {
     try {
@@ -185,15 +199,19 @@ showSplashScreen();
             return;
         }
 
-        // Carregar recursos externos com delay e retry
-        const loadWithRetry = async (loadFn, maxRetries = 3) => {
+        // Carregar recursos externos com delay e retry mais conservador
+        const loadWithRetry = async (loadFn, maxRetries = 2) => {
             for (let i = 0; i < maxRetries; i++) {
                 try {
                     await loadFn();
                     return;
                 } catch (error) {
-                    if (i === maxRetries - 1) throw error;
-                    await delay(1000 * (i + 1)); // Delay progressivo
+                    console.warn(`Tentativa ${i + 1} falhou:`, error.message);
+                    if (i === maxRetries - 1) {
+                        console.warn('Pulando carregamento devido a muitos erros');
+                        return;
+                    }
+                    await delay(2000 * (i + 1)); // Delay mais longo
                 }
             }
         };
@@ -246,6 +264,14 @@ showSplashScreen();
         await setupMenu();
         await delay(500);
         await setupMain();
+        
+        // Verificar se a interface foi carregada corretamente
+        setTimeout(() => {
+            if (!window.khanecoUI || !document.querySelector('.khaneco-watermark')) {
+                console.warn('🔄 Interface principal não detectada, criando interface básica...');
+                createBasicInterface();
+            }
+        }, 2000);
         
         // Console não será limpo para debug
         console.log('🎯 Carregamento do Khaneco concluído!');
@@ -325,6 +351,138 @@ async function loadBasicMode() {
 function setupBasicFeatures() {
     // Implementar funcionalidades básicas aqui se necessário
     console.log('Khaneco rodando em modo básico');
+}
+
+// Criar interface básica se os módulos principais não carregarem
+function createBasicInterface() {
+    console.log('🔧 Criando interface básica...');
+    
+    // Criar ícone da caneca básico
+    const basicIcon = document.createElement('div');
+    basicIcon.className = 'khaneco-basic-icon';
+    basicIcon.style.cssText = `
+        position: fixed !important;
+        top: 20px !important;
+        right: 20px !important;
+        width: 60px !important;
+        height: 60px !important;
+        background: white !important;
+        border: 3px solid #dc2626 !important;
+        border-radius: 50% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        cursor: pointer !important;
+        z-index: 999999 !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+        font-size: 30px !important;
+        transition: all 0.3s ease !important;
+        font-family: Arial, sans-serif !important;
+    `;
+    
+    basicIcon.innerHTML = '☕';
+    basicIcon.title = 'Khaneco - Clique para abrir o menu';
+    
+    // Criar painel básico
+    const basicPanel = document.createElement('div');
+    basicPanel.className = 'khaneco-basic-panel';
+    basicPanel.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 400px;
+        max-height: 500px;
+        background: white;
+        border: 2px solid #dc2626;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        z-index: 999998;
+        display: none;
+        font-family: Arial, sans-serif;
+    `;
+    
+    basicPanel.innerHTML = `
+        <div style="background: linear-gradient(135deg, #dc2626, #ef4444); color: white; padding: 20px; border-radius: 13px 13px 0 0; text-align: center; position: relative;">
+            <h2 style="margin: 0; font-size: 24px; font-weight: bold;">KHANECO</h2>
+            <div style="font-size: 12px; opacity: 0.8; margin-top: 5px;">${ver}</div>
+            <button onclick="this.closest('.khaneco-basic-panel').style.display='none'" style="
+                position: absolute; top: 15px; right: 15px; background: none; border: none; 
+                color: white; font-size: 24px; cursor: pointer; width: 30px; height: 30px; 
+                border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            ">×</button>
+        </div>
+        <div style="padding: 25px;">
+            <div style="background: #f9fafb; padding: 15px; border-radius: 10px; text-align: center; margin-bottom: 20px;">
+                <div style="font-size: 16px; font-weight: bold; color: #374151; margin-bottom: 5px;">${user.nickname || 'Usuário'}</div>
+                <div style="font-size: 12px; color: #6b7280;">ID: ${user.UID || '00000'}</div>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <h3 style="margin: 0 0 15px 0; color: #dc2626; font-size: 16px;">🎯 Recursos Principais</h3>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <label style="display: flex; align-items: center; justify-content: space-between; padding: 10px; background: #f9fafb; border-radius: 8px; cursor: pointer;">
+                        <span style="color: #374151;">Falsificar Respostas</span>
+                        <input type="checkbox" ${window.features.questionSpoof ? 'checked' : ''} onchange="window.features.questionSpoof = this.checked; console.log('Question Spoof:', this.checked);" style="cursor: pointer;">
+                    </label>
+                    <label style="display: flex; align-items: center; justify-content: space-between; padding: 10px; background: #f9fafb; border-radius: 8px; cursor: pointer;">
+                        <span style="color: #374151;">Falsificar Vídeos</span>
+                        <input type="checkbox" ${window.features.videoSpoof ? 'checked' : ''} onchange="window.features.videoSpoof = this.checked; console.log('Video Spoof:', this.checked);" style="cursor: pointer;">
+                    </label>
+                    <label style="display: flex; align-items: center; justify-content: space-between; padding: 10px; background: #f9fafb; border-radius: 8px; cursor: pointer;">
+                        <span style="color: #374151;">Revelar Respostas</span>
+                        <input type="checkbox" ${window.features.showAnswers ? 'checked' : ''} onchange="window.features.showAnswers = this.checked; console.log('Show Answers:', this.checked);" style="cursor: pointer;">
+                    </label>
+                </div>
+            </div>
+            
+            <div style="text-align: center; padding-top: 15px; border-top: 1px solid #e5e7eb;">
+                <div style="font-size: 12px; color: #6b7280;">Interface básica ativa</div>
+                <button onclick="location.reload()" style="
+                    margin-top: 10px; padding: 8px 16px; background: #dc2626; color: white; 
+                    border: none; border-radius: 5px; cursor: pointer; font-size: 12px;
+                ">Recarregar para interface completa</button>
+            </div>
+        </div>
+    `;
+    
+    // Eventos
+    basicIcon.addEventListener('click', () => {
+        const panel = document.querySelector('.khaneco-basic-panel');
+        if (panel.style.display === 'none' || !panel.style.display) {
+            panel.style.display = 'block';
+        } else {
+            panel.style.display = 'none';
+        }
+    });
+    
+    basicIcon.addEventListener('mouseenter', () => {
+        basicIcon.style.transform = 'scale(1.1)';
+    });
+    
+    basicIcon.addEventListener('mouseleave', () => {
+        basicIcon.style.transform = 'scale(1)';
+    });
+    
+    // Adicionar ao DOM
+    document.body.appendChild(basicIcon);
+    document.body.appendChild(basicPanel);
+    
+    console.log('✅ Interface básica criada! Clique no ☕ para abrir o menu.');
+    sendToast("🎯 Interface básica carregada! Clique no ícone da caneca.", 5000);
+    
+    // Configurar objeto global básico
+    window.khanecoUI = {
+        showPanel: () => {
+            basicPanel.style.display = 'block';
+        },
+        hidePanel: () => {
+            basicPanel.style.display = 'none';
+        },
+        createWatermark: () => {
+            createBasicInterface();
+        }
+    };
 }
 
 // Função de emergência para criar ícone da caneca se a interface não carregar
