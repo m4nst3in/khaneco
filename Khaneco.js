@@ -7,6 +7,7 @@ const ver = "V3.2.0";
 
 // Configuração do sistema
 const KHANECO_CONFIG = {
+    VERSION: "V3.2.0-STANDALONE",
     BRAND_NAME: "KHANECO",
     BRAND_COLOR: "#0ea5e9", // Sky blue professional
     ACCENT_COLOR: "#f59e0b", // Amber accent
@@ -505,65 +506,19 @@ setTimeout(() => {
     }
 }, 5000);
 
-// Carregamento sequencial para evitar erro 429
+// Sistema standalone sem dependências externas (evita erro 429)
 (async () => {
     try {
-        // Verificar conectividade
-        const isOnline = await checkConnectivity();
-        if (!isOnline) {
-            sendToast("⚠️ Conectividade limitada. Carregando modo básico...", 3000);
-            await loadBasicMode();
-            return;
-        }
-
-        // Carregar recursos externos com delay e retry mais conservador
-        const loadWithRetry = async (loadFn, maxRetries = 2) => {
-            for (let i = 0; i < maxRetries; i++) {
-                try {
-                    await loadFn();
-                    return;
-                } catch (error) {
-                    console.warn(`Tentativa ${i + 1} falhou:`, error.message);
-                    if (i === maxRetries - 1) {
-                        console.warn('Pulando carregamento devido a muitos erros');
-                        return;
-                    }
-                    await delay(2000 * (i + 1)); // Delay mais longo
-                }
-            }
-        };
-
-        await loadWithRetry(async () => {
-            await loadScript('https://raw.githubusercontent.com/adryd325/oneko.js/refs/heads/main/oneko.js', 'onekoJs');
-            if (window.onekoEl) {
-                onekoEl = document.getElementById('oneko'); 
-                onekoEl.style.backgroundImage = "url('https://raw.githubusercontent.com/adryd325/oneko.js/main/oneko.gif')"; 
-                onekoEl.style.display = "none";
-            }
-        });
-        await delay(500);
+        console.log('🚀 Iniciando Khaneco em modo standalone...');
         
-        await loadWithRetry(async () => {
-            await loadScript('https://cdn.jsdelivr.net/npm/darkreader@4.9.92/darkreader.min.js', 'darkReaderPlugin');
-        });
-        await delay(500);
+        // Não carregar recursos externos que podem causar erro 429
+        // Tudo já está integrado no próprio arquivo
         
-        await loadWithRetry(async () => {
-            await loadCss('https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css');
-        });
-        await delay(500);
-        
-        await loadWithRetry(async () => {
-            await loadScript('https://cdn.jsdelivr.net/npm/toastify-js', 'toastifyPlugin');
-        });
-        await delay(1000);
-
-        // Buscar informações do usuário
+        // Buscar informações do usuário (local)
         await loadUserInfo();
 
-        // Notificações de sucesso
-        sendToast("🌿 Khaneco injetado com sucesso!");
-        playAudio('https://r2.e-z.host/4d0a0bea-60f8-44d6-9e74-3032a64a9f32/gcelzszy.wav');
+        // Notificações usando sistema interno
+        sendToast("🌿 Khaneco standalone carregado com sucesso!");
         
         await delay(500);
         
@@ -573,30 +528,24 @@ setTimeout(() => {
             sendToast(`🪽 Que tal comprar um Samsung?`); 
         }
         
-        loadedPlugins.forEach(plugin => sendToast(`🪝 ${plugin} carregado!`, 2000, 'top'));
-        
         hideSplashScreen();
         
-        // Carregar módulos da interface e funcionalidades
-        await setupMenu();
-        await delay(500);
-        await setupMain();
+        // A interface moderna é inicializada automaticamente pelo KhanecoSystem
+        // Aguardar um pouco para garantir que tudo carregou
+        await delay(1000);
         
-        // Verificar se a interface foi carregada corretamente
-        setTimeout(() => {
-            if (!window.khanecoUI || !document.querySelector('.khaneco-watermark')) {
-                console.warn('🔄 Interface principal não detectada, criando interface básica...');
-                createBasicInterface();
-            }
-        }, 2000);
-        
-        // Console não será limpo para debug
-        console.log('🎯 Carregamento do Khaneco concluído!');
+        console.log('🎯 Khaneco standalone totalmente carregado!');
         
     } catch (error) {
-        console.error('Erro durante o carregamento do Khaneco:', error);
-        sendToast("❌ Erro no carregamento. Carregando modo básico...", 5000);
-        await loadBasicMode();
+        console.error('❌ Erro durante o carregamento do Khaneco:', error);
+        sendToast("❌ Erro no carregamento. Ativando modo de emergência...", 5000);
+        
+        // Garantir que pelo menos o sistema de emergência funcione
+        setTimeout(() => {
+            if (!window.khanecoUI) {
+                window.createEmergencyIcon();
+            }
+        }, 1000);
     }
 })();
 
