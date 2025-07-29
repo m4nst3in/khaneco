@@ -1,6 +1,25 @@
-const ver = "V3.1.2";
+// ===================================================================
+// KHANECO - Sistema Educacional Avançado
+// Versão Enterprise - Standalone Edition
+// ===================================================================
 
-const repoPath = `https://raw.githubusercontent.com/m4nst3in/khaneco/refs/heads/main/`;
+const ver = "V3.2.0";
+
+// Configuração do sistema
+const KHANECO_CONFIG = {
+    BRAND_NAME: "KHANECO",
+    BRAND_COLOR: "#0ea5e9", // Sky blue professional
+    ACCENT_COLOR: "#f59e0b", // Amber accent
+    SUCCESS_COLOR: "#10b981", // Emerald
+    ERROR_COLOR: "#ef4444", // Red
+    WARNING_COLOR: "#f59e0b", // Amber
+    ANIMATION_DURATION: "300ms",
+    BORDER_RADIUS: "12px",
+    SHADOW_SM: "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+    SHADOW_MD: "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
+    SHADOW_LG: "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)",
+    SHADOW_XL: "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)"
+};
 
 let device = {
     mobile: /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Windows Phone|Mobile|Tablet|Kindle|Silk|PlayBook|BB10/i.test(navigator.userAgent),
@@ -98,83 +117,381 @@ async function checkConnectivity() {
     }
 }
 
-function sendToast(text, duration=5000, gravity='bottom') { Toastify({ text: text, duration: duration, gravity: gravity, position: "center", stopOnFocus: true, style: { background: "#000000" } }).showToast(); debug(text); };
+// ===================================================================
+// SISTEMA DE NOTIFICAÇÕES INTERNO
+// ===================================================================
+
+class KhanecoNotificationSystem {
+    constructor() {
+        this.container = null;
+        this.notifications = new Map();
+        this.init();
+    }
+
+    init() {
+        this.createContainer();
+        this.injectStyles();
+    }
+
+    createContainer() {
+        this.container = document.createElement('div');
+        this.container.className = 'khaneco-notifications';
+        this.container.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 999999;
+            pointer-events: none;
+            max-width: 400px;
+        `;
+        document.body.appendChild(this.container);
+    }
+
+    injectStyles() {
+        const style = document.createElement('style');
+        style.innerHTML = `
+            .khaneco-notification {
+                background: white;
+                border-radius: ${KHANECO_CONFIG.BORDER_RADIUS};
+                box-shadow: ${KHANECO_CONFIG.SHADOW_LG};
+                margin-bottom: 12px;
+                padding: 16px;
+                max-width: 100%;
+                pointer-events: auto;
+                transform: translateX(100%);
+                transition: all ${KHANECO_CONFIG.ANIMATION_DURATION} cubic-bezier(0.4, 0, 0.2, 1);
+                border-left: 4px solid ${KHANECO_CONFIG.BRAND_COLOR};
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                font-size: 14px;
+            }
+            
+            .khaneco-notification.show {
+                transform: translateX(0);
+            }
+            
+            .khaneco-notification.success {
+                border-left-color: ${KHANECO_CONFIG.SUCCESS_COLOR};
+            }
+            
+            .khaneco-notification.error {
+                border-left-color: ${KHANECO_CONFIG.ERROR_COLOR};
+            }
+            
+            .khaneco-notification.warning {
+                border-left-color: ${KHANECO_CONFIG.WARNING_COLOR};
+            }
+            
+            .khaneco-notification-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-bottom: 8px;
+            }
+            
+            .khaneco-notification-icon {
+                width: 20px;
+                height: 20px;
+                margin-right: 8px;
+                flex-shrink: 0;
+            }
+            
+            .khaneco-notification-title {
+                font-weight: 600;
+                color: #111827;
+                flex: 1;
+                display: flex;
+                align-items: center;
+            }
+            
+            .khaneco-notification-close {
+                background: none;
+                border: none;
+                cursor: pointer;
+                padding: 4px;
+                border-radius: 6px;
+                color: #6b7280;
+                transition: all 0.2s;
+            }
+            
+            .khaneco-notification-close:hover {
+                background: #f3f4f6;
+                color: #374151;
+            }
+            
+            .khaneco-notification-message {
+                color: #6b7280;
+                line-height: 1.4;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    show(message, type = 'info', duration = 5000, title = null) {
+        const id = Date.now() + Math.random();
+        const notification = this.createNotification(message, type, title, id);
+        
+        this.container.appendChild(notification);
+        this.notifications.set(id, notification);
+        
+        // Trigger animation
+        requestAnimationFrame(() => {
+            notification.classList.add('show');
+        });
+        
+        // Auto-hide
+        if (duration > 0) {
+            setTimeout(() => {
+                this.hide(id);
+            }, duration);
+        }
+        
+        return id;
+    }
+
+    createNotification(message, type, title, id) {
+        const notification = document.createElement('div');
+        notification.className = `khaneco-notification ${type}`;
+        
+        const icons = {
+            success: '✅',
+            error: '❌',
+            warning: '⚠️',
+            info: 'ℹ️'
+        };
+        
+        const titles = {
+            success: title || 'Sucesso',
+            error: title || 'Erro',
+            warning: title || 'Aviso',
+            info: title || 'Informação'
+        };
+        
+        notification.innerHTML = `
+            <div class="khaneco-notification-header">
+                <div class="khaneco-notification-title">
+                    <span class="khaneco-notification-icon">${icons[type] || icons.info}</span>
+                    ${titles[type]}
+                </div>
+                <button class="khaneco-notification-close" onclick="window.khanecoNotifications.hide(${id})">
+                    ×
+                </button>
+            </div>
+            <div class="khaneco-notification-message">${message}</div>
+        `;
+        
+        return notification;
+    }
+
+    hide(id) {
+        const notification = this.notifications.get(id);
+        if (notification) {
+            notification.style.transform = 'translateX(100%)';
+            notification.style.opacity = '0';
+            
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+                this.notifications.delete(id);
+            }, 300);
+        }
+    }
+}
+
+// Sistema de notificações global
+window.khanecoNotifications = new KhanecoNotificationSystem();
+
+// Função de compatibilidade para substituir sendToast
+function sendToast(text, duration = 5000, gravity = 'bottom') {
+    const type = text.includes('❌') ? 'error' : 
+                 text.includes('⚠️') ? 'warning' : 
+                 text.includes('✅') || text.includes('🌿') ? 'success' : 'info';
+    
+    window.khanecoNotifications.show(text, type, duration);
+    console.log(`[KHANECO] ${text}`);
+}
 
 async function showSplashScreen() { splashScreen.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background-color:#000;display:flex;align-items:center;justify-content:center;z-index:9999;opacity:0;transition:opacity 0.5s ease;user-select:none;color:white;font-family:MuseoSans,sans-serif;font-size:30px;text-align:center;"; splashScreen.innerHTML = '<span style="color:white;">KHANECO</span><span style="color:#72ff72;">.SPACE</span>'; document.body.appendChild(splashScreen); setTimeout(() => splashScreen.style.opacity = '1', 10);};
 async function hideSplashScreen() { splashScreen.style.opacity = '0'; setTimeout(() => splashScreen.remove(), 1000); };
 
-async function loadScript(url, label) { 
-    try {
-        // Verificar cache primeiro
-        if (scriptCache.has(url)) {
-            loadedPlugins.push(label);
-            eval(scriptCache.get(url));
-            return;
-        }
-        
-        await delay(100); // Pequeno delay para evitar muitas requisições simultâneas
-        const response = await fetch(url);
-        if (!response.ok) {
-            console.warn(`Falha ao carregar ${label}: ${response.status}`);
-            return;
-        }
-        const script = await response.text();
-        
-        // Armazenar no cache
-        scriptCache.set(url, script);
-        loadedPlugins.push(label);
-        eval(script);
-    } catch (error) {
-        console.error(`Erro ao carregar ${label}:`, error);
-    }
-}
+// ===================================================================
+// FUNCIONALIDADES BÁSICAS INTEGRADAS
+// ===================================================================
 
-async function loadCss(url) { 
-    return new Promise((resolve) => { 
-        const link = document.createElement('link'); 
-        link.rel = 'stylesheet'; 
-        link.type = 'text/css'; 
-        link.href = url; 
-        link.onload = () => resolve(); 
-        link.onerror = () => {
-            console.warn(`Falha ao carregar CSS: ${url}`);
-            resolve();
+// Sistema de falsificação de respostas
+class QuestionSpoofer {
+    constructor() {
+        this.isActive = window.features.questionSpoof;
+        this.init();
+    }
+
+    init() {
+        if (this.isActive) {
+            this.interceptAnswers();
+        }
+    }
+
+    interceptAnswers() {
+        // Intercepta submissões de respostas
+        const originalFetch = window.fetch;
+        window.fetch = async function(...args) {
+            const response = await originalFetch.apply(this, args);
+            
+            if (args[0] && args[0].includes('/api/internal/exercises')) {
+                const clonedResponse = response.clone();
+                try {
+                    const data = await clonedResponse.json();
+                    if (data && window.features.questionSpoof) {
+                        // Simula resposta correta
+                        return new Response(JSON.stringify({
+                            ...data,
+                            correct: true,
+                            points_earned: data.points_possible || 100
+                        }), {
+                            status: 200,
+                            statusText: 'OK',
+                            headers: response.headers
+                        });
+                    }
+                } catch (e) {
+                    console.debug('Não foi possível processar resposta de exercício');
+                }
+            }
+            
+            return response;
         };
-        document.head.appendChild(link); 
-    }); 
-}
+    }
 
-async function setupMenu() {
-    try {
-        await loadScript(repoPath+'visuals/mainMenu.js', 'mainMenu');
-        await delay(200);
-        await loadScript(repoPath+'visuals/statusPanel.js', 'statusPanel');
-        await delay(200);
-        await loadScript(repoPath+'visuals/widgetBot.js', 'widgetBot');
-    } catch (error) {
-        console.warn('Erro ao carregar módulos visuais:', error);
-        // Criar interface básica se falhar
-        createBasicInterface();
+    toggle() {
+        this.isActive = !this.isActive;
+        window.features.questionSpoof = this.isActive;
+        sendToast(
+            this.isActive ? '✅ Falsificação de respostas ativada' : '❌ Falsificação de respostas desativada',
+            3000
+        );
     }
 }
 
-async function setupMain(){
-    const scripts = [
-        'functions/questionSpoof.js',
-        'functions/videoSpoof.js', 
-        'functions/minuteFarm.js',
-        'functions/spoofUser.js',
-        'functions/answerRevealer.js',
-        'functions/rgbLogo.js',
-        'functions/customBanner.js',
-        'functions/autoAnswer.js'
-    ];
-    
-    for (const script of scripts) {
-        await loadScript(repoPath + script, script.split('/')[1].replace('.js', ''));
-        await delay(150); // Delay entre cada carregamento
+// Sistema de falsificação de vídeos
+class VideoSpoofer {
+    constructor() {
+        this.isActive = window.features.videoSpoof;
+        this.init();
+    }
+
+    init() {
+        if (this.isActive) {
+            this.interceptVideos();
+        }
+    }
+
+    interceptVideos() {
+        // Intercepta eventos de vídeo
+        const videos = document.querySelectorAll('video');
+        videos.forEach(video => {
+            if (this.isActive) {
+                video.addEventListener('loadstart', () => {
+                    if (window.features.videoSpoof) {
+                        setTimeout(() => {
+                            video.currentTime = video.duration - 1;
+                            video.dispatchEvent(new Event('ended'));
+                        }, 1000);
+                    }
+                });
+            }
+        });
+
+        // Observer para novos vídeos
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                mutation.addedNodes.forEach((node) => {
+                    if (node.nodeType === 1) {
+                        const videos = node.querySelectorAll ? node.querySelectorAll('video') : [];
+                        videos.forEach(video => {
+                            if (window.features.videoSpoof) {
+                                video.currentTime = video.duration - 1;
+                            }
+                        });
+                    }
+                });
+            });
+        });
+
+        observer.observe(document.body, { childList: true, subtree: true });
+    }
+
+    toggle() {
+        this.isActive = !this.isActive;
+        window.features.videoSpoof = this.isActive;
+        sendToast(
+            this.isActive ? '✅ Falsificação de vídeos ativada' : '❌ Falsificação de vídeos desativada',
+            3000
+        );
     }
 }
+
+// Sistema de revelação de respostas
+class AnswerRevealer {
+    constructor() {
+        this.isActive = window.features.showAnswers;
+        this.init();
+    }
+
+    init() {
+        if (this.isActive) {
+            this.revealAnswers();
+        }
+    }
+
+    revealAnswers() {
+        const questions = document.querySelectorAll('[data-test-id*="question"], .question-container, .exercise-content');
+        questions.forEach(question => {
+            const answers = question.querySelectorAll('input[type="radio"], input[type="checkbox"]');
+            answers.forEach((answer, index) => {
+                if (answer.value && window.features.showAnswers) {
+                    const label = answer.closest('label') || answer.parentElement;
+                    if (label && index === 0) { // Marca primeira opção como correta por padrão
+                        label.style.border = '2px solid #10b981';
+                        label.style.backgroundColor = '#f0fdf4';
+                        const indicator = document.createElement('span');
+                        indicator.innerHTML = ' ✅';
+                        indicator.style.color = '#10b981';
+                        if (!label.querySelector('.answer-indicator')) {
+                            indicator.className = 'answer-indicator';
+                            label.appendChild(indicator);
+                        }
+                    }
+                }
+            });
+        });
+    }
+
+    toggle() {
+        this.isActive = !this.isActive;
+        window.features.showAnswers = this.isActive;
+        
+        if (this.isActive) {
+            this.revealAnswers();
+        } else {
+            // Remove indicadores
+            document.querySelectorAll('.answer-indicator').forEach(el => el.remove());
+            document.querySelectorAll('label').forEach(label => {
+                label.style.border = '';
+                label.style.backgroundColor = '';
+            });
+        }
+        
+        sendToast(
+            this.isActive ? '✅ Revelação de respostas ativada' : '❌ Revelação de respostas desativada',
+            3000
+        );
+    }
+}
+
+// Inicializar funcionalidades
+window.questionSpoofer = new QuestionSpoofer();
+window.videoSpoofer = new VideoSpoofer();
+window.answerRevealer = new AnswerRevealer();
 
 if (!/^https?:\/\/([a-z0-9-]+\.)?khanacademy\.org/.test(window.location.href)) { alert("❌ Khaneco Failed to Injected!\n\nVocê precisa executar o Khaneco no site do Khan Academy! (https://pt.khanacademy.org/)"); window.location.href = "https://pt.khanacademy.org/"; }
 
@@ -353,139 +670,726 @@ function setupBasicFeatures() {
     console.log('Khaneco rodando em modo básico');
 }
 
-// Criar interface básica se os módulos principais não carregarem
-function createBasicInterface() {
-    console.log('🔧 Criando interface básica...');
-    
-    // Criar ícone da caneca básico
-    const basicIcon = document.createElement('div');
-    basicIcon.className = 'khaneco-basic-icon';
-    basicIcon.style.cssText = `
-        position: fixed !important;
-        top: 20px !important;
-        right: 20px !important;
-        width: 60px !important;
-        height: 60px !important;
-        background: white !important;
-        border: 3px solid #dc2626 !important;
-        border-radius: 50% !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        cursor: pointer !important;
-        z-index: 999999 !important;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
-        font-size: 30px !important;
-        transition: all 0.3s ease !important;
-        font-family: Arial, sans-serif !important;
-    `;
-    
-    basicIcon.innerHTML = '☕';
-    basicIcon.title = 'Khaneco - Clique para abrir o menu';
-    
-    // Criar painel básico
-    const basicPanel = document.createElement('div');
-    basicPanel.className = 'khaneco-basic-panel';
-    basicPanel.style.cssText = `
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        width: 400px;
-        max-height: 500px;
-        background: white;
-        border: 2px solid #dc2626;
-        border-radius: 15px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-        z-index: 999998;
-        display: none;
-        font-family: Arial, sans-serif;
-    `;
-    
-    basicPanel.innerHTML = `
-        <div style="background: linear-gradient(135deg, #dc2626, #ef4444); color: white; padding: 20px; border-radius: 13px 13px 0 0; text-align: center; position: relative;">
-            <h2 style="margin: 0; font-size: 24px; font-weight: bold;">KHANECO</h2>
-            <div style="font-size: 12px; opacity: 0.8; margin-top: 5px;">${ver}</div>
-            <button onclick="this.closest('.khaneco-basic-panel').style.display='none'" style="
-                position: absolute; top: 15px; right: 15px; background: none; border: none; 
-                color: white; font-size: 24px; cursor: pointer; width: 30px; height: 30px; 
-                border-radius: 50%; display: flex; align-items: center; justify-content: center;
-            ">×</button>
-        </div>
-        <div style="padding: 25px;">
-            <div style="background: #f9fafb; padding: 15px; border-radius: 10px; text-align: center; margin-bottom: 20px;">
-                <div style="font-size: 16px; font-weight: bold; color: #374151; margin-bottom: 5px;">${user.nickname || 'Usuário'}</div>
-                <div style="font-size: 12px; color: #6b7280;">ID: ${user.UID || '00000'}</div>
-            </div>
+// ===================================================================
+// INTERFACE PRINCIPAL MODERNA E PROFISSIONAL
+// ===================================================================
+
+class KhanecoModernUI {
+    constructor() {
+        this.isVisible = false;
+        this.isDarkMode = false;
+        this.currentTab = 'dashboard';
+        this.init();
+    }
+
+    init() {
+        this.injectStyles();
+        this.createFloatingIcon();
+        this.createMainInterface();
+        this.bindEvents();
+        this.startStatusUpdates();
+    }
+
+    injectStyles() {
+        const style = document.createElement('style');
+        style.innerHTML = `
+            /* Reset e Base */
+            .khaneco-ui * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
             
-            <div style="margin-bottom: 20px;">
-                <h3 style="margin: 0 0 15px 0; color: #dc2626; font-size: 16px;">🎯 Recursos Principais</h3>
-                <div style="display: flex; flex-direction: column; gap: 10px;">
-                    <label style="display: flex; align-items: center; justify-content: space-between; padding: 10px; background: #f9fafb; border-radius: 8px; cursor: pointer;">
-                        <span style="color: #374151;">Falsificar Respostas</span>
-                        <input type="checkbox" ${window.features.questionSpoof ? 'checked' : ''} onchange="window.features.questionSpoof = this.checked; console.log('Question Spoof:', this.checked);" style="cursor: pointer;">
-                    </label>
-                    <label style="display: flex; align-items: center; justify-content: space-between; padding: 10px; background: #f9fafb; border-radius: 8px; cursor: pointer;">
-                        <span style="color: #374151;">Falsificar Vídeos</span>
-                        <input type="checkbox" ${window.features.videoSpoof ? 'checked' : ''} onchange="window.features.videoSpoof = this.checked; console.log('Video Spoof:', this.checked);" style="cursor: pointer;">
-                    </label>
-                    <label style="display: flex; align-items: center; justify-content: space-between; padding: 10px; background: #f9fafb; border-radius: 8px; cursor: pointer;">
-                        <span style="color: #374151;">Revelar Respostas</span>
-                        <input type="checkbox" ${window.features.showAnswers ? 'checked' : ''} onchange="window.features.showAnswers = this.checked; console.log('Show Answers:', this.checked);" style="cursor: pointer;">
-                    </label>
+            .khaneco-ui {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+                font-size: 14px;
+                line-height: 1.5;
+                color: #1f2937;
+                --primary: ${KHANECO_CONFIG.BRAND_COLOR};
+                --accent: ${KHANECO_CONFIG.ACCENT_COLOR};
+                --success: ${KHANECO_CONFIG.SUCCESS_COLOR};
+                --error: ${KHANECO_CONFIG.ERROR_COLOR};
+                --warning: ${KHANECO_CONFIG.WARNING_COLOR};
+            }
+            
+            /* Ícone Flutuante */
+            .khaneco-floating-icon {
+                position: fixed;
+                top: 24px;
+                right: 24px;
+                width: 64px;
+                height: 64px;
+                background: linear-gradient(135deg, var(--primary), #0284c7);
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                z-index: 999999;
+                box-shadow: ${KHANECO_CONFIG.SHADOW_LG};
+                transition: all ${KHANECO_CONFIG.ANIMATION_DURATION} cubic-bezier(0.4, 0, 0.2, 1);
+                border: 3px solid white;
+            }
+            
+            .khaneco-floating-icon:hover {
+                transform: scale(1.05);
+                box-shadow: ${KHANECO_CONFIG.SHADOW_XL};
+            }
+            
+            .khaneco-floating-icon:active {
+                transform: scale(0.95);
+            }
+            
+            .khaneco-floating-icon svg {
+                width: 28px;
+                height: 28px;
+                fill: white;
+            }
+            
+            /* Painel Principal */
+            .khaneco-main-panel {
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%) scale(0.9);
+                width: 90%;
+                max-width: 1000px;
+                height: 80vh;
+                max-height: 700px;
+                background: white;
+                border-radius: 20px;
+                box-shadow: ${KHANECO_CONFIG.SHADOW_XL};
+                z-index: 999998;
+                opacity: 0;
+                visibility: hidden;
+                transition: all ${KHANECO_CONFIG.ANIMATION_DURATION} cubic-bezier(0.4, 0, 0.2, 1);
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+            }
+            
+            .khaneco-main-panel.visible {
+                opacity: 1;
+                visibility: visible;
+                transform: translate(-50%, -50%) scale(1);
+            }
+            
+            /* Header */
+            .khaneco-header {
+                background: linear-gradient(135deg, var(--primary), #0284c7);
+                color: white;
+                padding: 24px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                border-radius: 20px 20px 0 0;
+            }
+            
+            .khaneco-logo {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+            }
+            
+            .khaneco-logo svg {
+                width: 32px;
+                height: 32px;
+                fill: white;
+            }
+            
+            .khaneco-brand {
+                font-size: 24px;
+                font-weight: 700;
+                letter-spacing: -0.5px;
+            }
+            
+            .khaneco-version {
+                font-size: 12px;
+                opacity: 0.8;
+                font-weight: 500;
+                background: rgba(255, 255, 255, 0.2);
+                padding: 2px 8px;
+                border-radius: 12px;
+                margin-left: 8px;
+            }
+            
+            .khaneco-header-actions {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+            }
+            
+            .khaneco-btn {
+                background: none;
+                border: 2px solid rgba(255, 255, 255, 0.3);
+                color: white;
+                padding: 8px 16px;
+                border-radius: 8px;
+                cursor: pointer;
+                font-size: 12px;
+                font-weight: 500;
+                transition: all 0.2s;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+            
+            .khaneco-btn:hover {
+                background: rgba(255, 255, 255, 0.1);
+                border-color: rgba(255, 255, 255, 0.5);
+            }
+            
+            .khaneco-close-btn {
+                background: rgba(255, 255, 255, 0.1);
+                border: none;
+                color: white;
+                width: 32px;
+                height: 32px;
+                border-radius: 8px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 16px;
+                transition: all 0.2s;
+            }
+            
+            .khaneco-close-btn:hover {
+                background: rgba(255, 255, 255, 0.2);
+            }
+            
+            /* Conteúdo */
+            .khaneco-content {
+                flex: 1;
+                display: flex;
+                background: #f8fafc;
+            }
+            
+            /* Sidebar */
+            .khaneco-sidebar {
+                width: 240px;
+                background: white;
+                border-right: 1px solid #e2e8f0;
+                padding: 0;
+            }
+            
+            .khaneco-nav {
+                list-style: none;
+                padding: 16px 0;
+            }
+            
+            .khaneco-nav-item {
+                margin: 0;
+            }
+            
+            .khaneco-nav-link {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 12px 24px;
+                color: #64748b;
+                text-decoration: none;
+                cursor: pointer;
+                transition: all 0.2s;
+                border: none;
+                background: none;
+                width: 100%;
+                font-size: 14px;
+                font-weight: 500;
+            }
+            
+            .khaneco-nav-link:hover {
+                background: #f1f5f9;
+                color: #334155;
+            }
+            
+            .khaneco-nav-link.active {
+                background: #eff6ff;
+                color: var(--primary);
+                border-right: 3px solid var(--primary);
+            }
+            
+            .khaneco-nav-icon {
+                width: 20px;
+                height: 20px;
+                opacity: 0.7;
+            }
+            
+            /* Main Content */
+            .khaneco-main {
+                flex: 1;
+                padding: 24px;
+                overflow-y: auto;
+            }
+            
+            .khaneco-tab-content {
+                display: none;
+            }
+            
+            .khaneco-tab-content.active {
+                display: block;
+            }
+            
+            /* Dashboard Cards */
+            .khaneco-dashboard-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                gap: 20px;
+                margin-bottom: 24px;
+            }
+            
+            .khaneco-card {
+                background: white;
+                border-radius: ${KHANECO_CONFIG.BORDER_RADIUS};
+                padding: 20px;
+                box-shadow: ${KHANECO_CONFIG.SHADOW_SM};
+                border: 1px solid #e2e8f0;
+                transition: all 0.2s;
+            }
+            
+            .khaneco-card:hover {
+                box-shadow: ${KHANECO_CONFIG.SHADOW_MD};
+                transform: translateY(-2px);
+            }
+            
+            .khaneco-card-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-bottom: 16px;
+            }
+            
+            .khaneco-card-title {
+                font-size: 16px;
+                font-weight: 600;
+                color: #1e293b;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+            
+            .khaneco-card-icon {
+                width: 20px;
+                height: 20px;
+                color: var(--primary);
+            }
+            
+            /* Toggle Switch */
+            .khaneco-toggle {
+                position: relative;
+                width: 44px;
+                height: 24px;
+                background: #cbd5e1;
+                border-radius: 12px;
+                cursor: pointer;
+                transition: all 0.3s;
+            }
+            
+            .khaneco-toggle.active {
+                background: var(--primary);
+            }
+            
+            .khaneco-toggle::after {
+                content: '';
+                position: absolute;
+                top: 2px;
+                left: 2px;
+                width: 20px;
+                height: 20px;
+                background: white;
+                border-radius: 50%;
+                transition: all 0.3s;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            }
+            
+            .khaneco-toggle.active::after {
+                transform: translateX(20px);
+            }
+            
+            /* Responsive */
+            @media (max-width: 768px) {
+                .khaneco-main-panel {
+                    width: 95%;
+                    height: 90vh;
+                }
+                
+                .khaneco-content {
+                    flex-direction: column;
+                }
+                
+                .khaneco-sidebar {
+                    width: 100%;
+                    border-right: none;
+                    border-bottom: 1px solid #e2e8f0;
+                }
+                
+                .khaneco-nav {
+                    display: flex;
+                    overflow-x: auto;
+                    padding: 8px 16px;
+                }
+                
+                .khaneco-nav-item {
+                    flex-shrink: 0;
+                }
+                
+                .khaneco-nav-link {
+                    padding: 8px 16px;
+                    white-space: nowrap;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    createFloatingIcon() {
+        const icon = document.createElement('div');
+        icon.className = 'khaneco-floating-icon';
+        icon.innerHTML = `
+            <svg viewBox="0 0 24 24">
+                <path d="M2,21H20L18,19H6L4,21M20,8H18V5A3,3 0 0,0 15,2H9A3,3 0 0,0 6,5V8H4A2,2 0 0,0 2,10V14A2,2 0 0,0 4,16H6V21H8V16H16V21H18V16H20A2,2 0 0,0 22,14V10A2,2 0 0,0 20,8M16,8H8V5A1,1 0 0,1 9,4H15A1,1 0 0,1 16,5V8Z"/>
+            </svg>
+        `;
+        
+        icon.addEventListener('click', () => this.togglePanel());
+        
+        document.body.appendChild(icon);
+        this.icon = icon;
+    }
+
+    createMainInterface() {
+        const panel = document.createElement('div');
+        panel.className = 'khaneco-main-panel khaneco-ui';
+        
+        panel.innerHTML = `
+            <div class="khaneco-header">
+                <div class="khaneco-logo">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M2,21H20L18,19H6L4,21M20,8H18V5A3,3 0 0,0 15,2H9A3,3 0 0,0 6,5V8H4A2,2 0 0,0 2,10V14A2,2 0 0,0 4,16H6V21H8V16H16V21H18V16H20A2,2 0 0,0 22,14V10A2,2 0 0,0 20,8M16,8H8V5A1,1 0 0,1 9,4H15A1,1 0 0,1 16,5V8Z"/>
+                    </svg>
+                    <div>
+                        <span class="khaneco-brand">KHANECO</span>
+                        <span class="khaneco-version">${KHANECO_CONFIG.VERSION}</span>
+                    </div>
+                </div>
+                <div class="khaneco-header-actions">
+                    <button class="khaneco-btn" onclick="window.khanecoUI.exportSettings()">
+                        💾 Backup
+                    </button>
+                    <button class="khaneco-btn" onclick="window.khanecoUI.openSettings()">
+                        ⚙️ Config
+                    </button>
+                    <button class="khaneco-close-btn" onclick="window.khanecoUI.hidePanel()">
+                        ✕
+                    </button>
                 </div>
             </div>
             
-            <div style="text-align: center; padding-top: 15px; border-top: 1px solid #e5e7eb;">
-                <div style="font-size: 12px; color: #6b7280;">Interface básica ativa</div>
-                <button onclick="location.reload()" style="
-                    margin-top: 10px; padding: 8px 16px; background: #dc2626; color: white; 
-                    border: none; border-radius: 5px; cursor: pointer; font-size: 12px;
-                ">Recarregar para interface completa</button>
+            <div class="khaneco-content">
+                <div class="khaneco-sidebar">
+                    <ul class="khaneco-nav">
+                        <li class="khaneco-nav-item">
+                            <button class="khaneco-nav-link active" data-tab="dashboard">
+                                <span class="khaneco-nav-icon">📊</span>
+                                Dashboard
+                            </button>
+                        </li>
+                        <li class="khaneco-nav-item">
+                            <button class="khaneco-nav-link" data-tab="tools">
+                                <span class="khaneco-nav-icon">🛠️</span>
+                                Ferramentas
+                            </button>
+                        </li>
+                        <li class="khaneco-nav-item">
+                            <button class="khaneco-nav-link" data-tab="settings">
+                                <span class="khaneco-nav-icon">⚙️</span>
+                                Configurações
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="khaneco-main">
+                    ${this.createDashboardTab()}
+                    ${this.createToolsTab()}
+                    ${this.createSettingsTab()}
+                </div>
             </div>
-        </div>
-    `;
-    
-    // Eventos
-    basicIcon.addEventListener('click', () => {
-        const panel = document.querySelector('.khaneco-basic-panel');
-        if (panel.style.display === 'none' || !panel.style.display) {
-            panel.style.display = 'block';
+        `;
+        
+        document.body.appendChild(panel);
+        this.panel = panel;
+    }
+
+    createDashboardTab() {
+        return `
+            <div class="khaneco-tab-content active" data-tab="dashboard">
+                <h2 style="margin-bottom: 24px; color: #1e293b; font-size: 28px; font-weight: 700;">
+                    Bem-vindo ao Khaneco
+                </h2>
+                
+                <div class="khaneco-dashboard-grid">
+                    <div class="khaneco-card">
+                        <div class="khaneco-card-header">
+                            <div class="khaneco-card-title">
+                                <span class="khaneco-card-icon">👤</span>
+                                Perfil do Usuário
+                            </div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="width: 64px; height: 64px; background: linear-gradient(135deg, var(--primary), #0284c7); border-radius: 50%; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; font-weight: bold;">
+                                ${(window.user?.nickname?.[0] || 'U').toUpperCase()}
+                            </div>
+                            <div style="font-size: 18px; font-weight: 600; color: #1e293b; margin-bottom: 4px;">
+                                ${window.user?.nickname || 'Usuário Anônimo'}
+                            </div>
+                            <div style="font-size: 12px; color: #64748b; font-family: monospace;">
+                                ID: ${window.user?.UID || '00000000'}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="khaneco-card">
+                        <div class="khaneco-card-header">
+                            <div class="khaneco-card-title">
+                                <span class="khaneco-card-icon">🎯</span>
+                                Status do Sistema
+                            </div>
+                        </div>
+                        <div id="khaneco-system-status">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                                <span>Falsificar Questões</span>
+                                <div class="khaneco-toggle ${window.features?.questionSpoof ? 'active' : ''}" data-feature="questionSpoof"></div>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                                <span>Falsificar Vídeos</span>
+                                <div class="khaneco-toggle ${window.features?.videoSpoof ? 'active' : ''}" data-feature="videoSpoof"></div>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span>Revelar Respostas</span>
+                                <div class="khaneco-toggle ${window.features?.showAnswers ? 'active' : ''}" data-feature="showAnswers"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="khaneco-card">
+                        <div class="khaneco-card-header">
+                            <div class="khaneco-card-title">
+                                <span class="khaneco-card-icon">⚡</span>
+                                Ações Rápidas
+                            </div>
+                        </div>
+                        <div style="display: grid; gap: 8px;">
+                            <button class="khaneco-btn" style="width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px;" onclick="window.questionSpoofer?.spoof()">
+                                🚀 Falsificar Questão
+                            </button>
+                            <button class="khaneco-btn" style="width: 100%; padding: 12px; background: var(--accent); color: white; border: none; border-radius: 8px;" onclick="window.videoSpoofer?.spoof()">
+                                💰 Acelerar Vídeo
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    createToolsTab() {
+        return `
+            <div class="khaneco-tab-content" data-tab="tools">
+                <h2 style="margin-bottom: 24px; color: #1e293b; font-size: 28px; font-weight: 700;">
+                    Ferramentas
+                </h2>
+                <div class="khaneco-dashboard-grid">
+                    <div class="khaneco-card">
+                        <div class="khaneco-card-header">
+                            <div class="khaneco-card-title">
+                                <span class="khaneco-card-icon">❓</span>
+                                Manipulação de Questões
+                            </div>
+                        </div>
+                        <p style="margin-bottom: 16px; color: #64748b;">Controle total sobre questões e exercícios</p>
+                        <div style="display: grid; gap: 8px;">
+                            <button class="khaneco-btn" style="width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px;" onclick="window.questionSpoofer?.spoof()">
+                                🎯 Falsificar Respostas
+                            </button>
+                            <button class="khaneco-btn" style="width: 100%; padding: 12px; background: var(--success); color: white; border: none; border-radius: 8px;" onclick="window.answerRevealer?.reveal()">
+                                👁️ Revelar Respostas
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="khaneco-card">
+                        <div class="khaneco-card-header">
+                            <div class="khaneco-card-title">
+                                <span class="khaneco-card-icon">🎥</span>
+                                Manipulação de Vídeos
+                            </div>
+                        </div>
+                        <p style="margin-bottom: 16px; color: #64748b;">Acelere ou pule vídeos automaticamente</p>
+                        <div style="display: grid; gap: 8px;">
+                            <button class="khaneco-btn" style="width: 100%; padding: 12px; background: var(--accent); color: white; border: none; border-radius: 8px;" onclick="window.videoSpoofer?.spoof()">
+                                ⚡ Acelerar Vídeos
+                            </button>
+                            <button class="khaneco-btn" style="width: 100%; padding: 12px; background: var(--warning); color: white; border: none; border-radius: 8px;" onclick="window.answerRevealer?.reveal()">
+                                👁️ Revelar Respostas
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    createSettingsTab() {
+        return `
+            <div class="khaneco-tab-content" data-tab="settings">
+                <h2 style="margin-bottom: 24px; color: #1e293b; font-size: 28px; font-weight: 700;">
+                    Configurações
+                </h2>
+                <div class="khaneco-dashboard-grid">
+                    <div class="khaneco-card">
+                        <div class="khaneco-card-header">
+                            <div class="khaneco-card-title">
+                                <span class="khaneco-card-icon">🔔</span>
+                                Notificações
+                            </div>
+                        </div>
+                        <div style="display: grid; gap: 12px;">
+                            <label style="display: flex; justify-content: space-between; align-items: center;">
+                                <span>Notificações de Sucesso</span>
+                                <div class="khaneco-toggle active" data-feature="successNotifications"></div>
+                            </label>
+                            <label style="display: flex; justify-content: space-between; align-items: center;">
+                                <span>Notificações de Erro</span>
+                                <div class="khaneco-toggle active" data-feature="errorNotifications"></div>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="khaneco-card">
+                        <div class="khaneco-card-header">
+                            <div class="khaneco-card-title">
+                                <span class="khaneco-card-icon">🛠️</span>
+                                Sistema
+                            </div>
+                        </div>
+                        <div style="display: grid; gap: 8px;">
+                            <button class="khaneco-btn" style="width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px;" onclick="window.khanecoUI.exportSettings()">
+                                💾 Exportar Configurações
+                            </button>
+                            <button class="khaneco-btn" style="width: 100%; padding: 12px; background: var(--error); color: white; border: none; border-radius: 8px;" onclick="location.reload()">
+                                🔄 Recarregar Página
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    bindEvents() {
+        // Navegação por tabs
+        this.panel.addEventListener('click', (e) => {
+            if (e.target.matches('.khaneco-nav-link')) {
+                e.preventDefault();
+                this.switchTab(e.target.dataset.tab);
+            }
+            
+            // Toggle switches
+            if (e.target.matches('.khaneco-toggle')) {
+                this.handleToggle(e.target);
+            }
+        });
+        
+        // Fechar com ESC
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.isVisible) {
+                this.hidePanel();
+            }
+        });
+    }
+
+    switchTab(tabName) {
+        // Atualizar navegação
+        this.panel.querySelectorAll('.khaneco-nav-link').forEach(link => {
+            link.classList.remove('active');
+        });
+        this.panel.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+        
+        // Atualizar conteúdo
+        this.panel.querySelectorAll('.khaneco-tab-content').forEach(content => {
+            content.classList.remove('active');
+        });
+        this.panel.querySelector(`.khaneco-tab-content[data-tab="${tabName}"]`).classList.add('active');
+        
+        this.currentTab = tabName;
+    }
+
+    handleToggle(toggle) {
+        const feature = toggle.dataset.feature;
+        const isActive = toggle.classList.contains('active');
+        
+        if (isActive) {
+            toggle.classList.remove('active');
+            window.features[feature] = false;
         } else {
-            panel.style.display = 'none';
+            toggle.classList.add('active');
+            window.features[feature] = true;
         }
-    });
-    
-    basicIcon.addEventListener('mouseenter', () => {
-        basicIcon.style.transform = 'scale(1.1)';
-    });
-    
-    basicIcon.addEventListener('mouseleave', () => {
-        basicIcon.style.transform = 'scale(1)';
-    });
-    
-    // Adicionar ao DOM
-    document.body.appendChild(basicIcon);
-    document.body.appendChild(basicPanel);
-    
-    console.log('✅ Interface básica criada! Clique no ☕ para abrir o menu.');
-    sendToast("🎯 Interface básica carregada! Clique no ícone da caneca.", 5000);
-    
-    // Configurar objeto global básico
-    window.khanecoUI = {
-        showPanel: () => {
-            basicPanel.style.display = 'block';
-        },
-        hidePanel: () => {
-            basicPanel.style.display = 'none';
-        },
-        createWatermark: () => {
-            createBasicInterface();
+        
+        // Notificar mudança
+        window.notificationSystem?.show(
+            `${feature} ${window.features[feature] ? 'ativado' : 'desativado'}`,
+            window.features[feature] ? 'success' : 'info'
+        );
+        
+        console.log(`🔧 ${feature}:`, window.features[feature]);
+    }
+
+    togglePanel() {
+        if (this.isVisible) {
+            this.hidePanel();
+        } else {
+            this.showPanel();
         }
-    };
+    }
+
+    showPanel() {
+        this.panel.classList.add('visible');
+        this.isVisible = true;
+    }
+
+    hidePanel() {
+        this.panel.classList.remove('visible');
+        this.isVisible = false;
+    }
+
+    exportSettings() {
+        const settings = {
+            features: window.features,
+            version: KHANECO_CONFIG.VERSION,
+            exported: new Date().toISOString()
+        };
+        
+        const blob = new Blob([JSON.stringify(settings, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `khaneco-settings-${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        
+        window.notificationSystem?.show('💾 Configurações exportadas!', 'success');
+    }
+
+    openSettings() {
+        this.switchTab('settings');
+    }
 }
 
-// Função de emergência para criar ícone da caneca se a interface não carregar
+// ===================================================================
+// SISTEMA DE EMERGÊNCIA E FALLBACK
+// ===================================================================
 window.createEmergencyIcon = function() {
     // Remover ícone existente se houver
     const existing = document.querySelector('.khaneco-emergency-icon');
@@ -535,4 +1439,148 @@ window.createEmergencyIcon = function() {
     console.log('🚨 Ícone de emergência criado! Clique no ☕ para abrir o menu.');
     
     return emergencyIcon;
-};
+}
+
+// ===================================================================
+// SISTEMA DE INICIALIZAÇÃO MODERNO
+// ===================================================================
+
+class KhanecoSystem {
+    constructor() {
+        this.initialized = false;
+        this.startTime = Date.now();
+        this.init();
+    }
+
+    async init() {
+        try {
+            console.log('🚀 Inicializando Khaneco System...');
+            
+            // Configurar dados do usuário
+            await this.setupUserData();
+            
+            // Configurar recursos globais
+            this.setupGlobalFeatures();
+            
+            // Inicializar sistemas principais
+            this.initializeSystems();
+            
+            // Inicializar interface moderna
+            this.initializeUI();
+            
+            // Marcar como inicializado
+            this.initialized = true;
+            
+            const loadTime = Date.now() - this.startTime;
+            console.log(`✅ Khaneco carregado em ${loadTime}ms`);
+            
+            window.notificationSystem?.show(
+                `🎉 Khaneco carregado com sucesso! (${loadTime}ms)`,
+                'success'
+            );
+            
+        } catch (error) {
+            console.error('❌ Erro na inicialização:', error);
+            this.createEmergencyFallback();
+        }
+    }
+
+    async setupUserData() {
+        // Tentar obter dados do usuário do Khan Academy
+        try {
+            const response = await fetch('/api/internal/user');
+            if (response.ok) {
+                const userData = await response.json();
+                window.user = {
+                    nickname: userData.nickname || 'Usuário',
+                    UID: userData.kaid || '00000000'
+                };
+            }
+        } catch (error) {
+            console.warn('⚠️ Não foi possível obter dados do usuário:', error);
+        }
+        
+        // Fallback para dados básicos
+        if (!window.user) {
+            window.user = {
+                nickname: 'Usuário Khan',
+                UID: '00000000'
+            };
+        }
+    }
+
+    setupGlobalFeatures() {
+        // Configurar objeto global de recursos
+        window.features = {
+            questionSpoof: false,
+            videoSpoof: false,
+            showAnswers: false,
+            autoFarm: false,
+            autoComplete: false,
+            darkMode: false,
+            animations: true,
+            successNotifications: true,
+            errorNotifications: true
+        };
+        
+        // Configurar estatísticas
+        window.stats = {
+            questionsAnswered: 0,
+            videosWatched: 0,
+            pointsEarned: 0,
+            timeActive: 0
+        };
+    }
+
+    initializeSystems() {
+        // Inicializar sistema de notificações
+        window.notificationSystem = new KhanecoNotificationSystem();
+        
+        // Inicializar sistemas principais
+        window.questionSpoofer = new QuestionSpoofer();
+        window.videoSpoofer = new VideoSpoofer();
+        window.answerRevealer = new AnswerRevealer();
+        
+        console.log('✅ Sistemas principais inicializados');
+    }
+
+    initializeUI() {
+        // Inicializar interface moderna
+        window.khanecoUI = new KhanecoModernUI();
+        
+        // Configurar métodos globais
+        this.setupGlobalMethods();
+        
+        console.log('✅ Interface moderna inicializada');
+    }
+
+    setupGlobalMethods() {
+        // Métodos globais para compatibilidade
+        window.showPanel = () => window.khanecoUI?.showPanel();
+        window.hidePanel = () => window.khanecoUI?.hidePanel();
+        window.togglePanel = () => window.khanecoUI?.togglePanel();
+        window.createWatermark = () => console.log('🎨 Interface moderna já ativa');
+        window.createEmergencyIcon = () => window.createEmergencyIcon();
+    }
+
+    createEmergencyFallback() {
+        console.log('🚨 Criando sistema de emergência...');
+        window.createEmergencyIcon();
+    }
+}
+
+// ===================================================================
+// INICIALIZAÇÃO AUTOMÁTICA
+// ===================================================================
+
+// Aguardar carregamento completo da página
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => new KhanecoSystem(), 1000);
+    });
+} else {
+    setTimeout(() => new KhanecoSystem(), 1000);
+}
+
+// Exportar para uso global
+window.KhanecoSystem = KhanecoSystem;
