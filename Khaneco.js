@@ -57,6 +57,33 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const playAudio = url => { const audio = new Audio(url); audio.play(); debug(`🔊 Playing audio from ${url}`); };
 const findAndClickBySelector = selector => { const element = document.querySelector(selector); if (element) { element.click(); sendToast(`⭕ Pressionando ${selector}...`, 1000); } };
 
+// Função global para abrir o menu (disponível desde o início)
+window.openKhanecoMenu = function() {
+    if (window.khanecoUI && window.khanecoUI.showPanel) {
+        window.khanecoUI.showPanel();
+        console.log('✅ Menu Khaneco aberto!');
+    } else {
+        console.log('❌ Interface Khaneco ainda não carregada. Aguarde alguns segundos e tente novamente...');
+        sendToast("⏳ Aguarde o carregamento completo do Khaneco...", 3000);
+    }
+};
+
+// Função para recriar o ícone se necessário
+window.recreateKhanecoIcon = function() {
+    if (window.khanecoUI && window.khanecoUI.createWatermark) {
+        // Remover ícone existente
+        const existing = document.querySelector('.khaneco-watermark');
+        if (existing) existing.remove();
+        
+        // Criar novo ícone
+        window.khanecoUI.createWatermark();
+        console.log('✅ Ícone da caneca recriado!');
+        sendToast("🎯 Ícone da caneca recriado no canto superior direito!", 3000);
+    } else {
+        console.log('❌ Interface não carregada ainda. Aguarde...');
+    }
+};
+
 // Função para verificar conectividade
 async function checkConnectivity() {
     try {
@@ -147,9 +174,6 @@ if (!/^https?:\/\/([a-z0-9-]+\.)?khanacademy\.org/.test(window.location.href)) {
 
 showSplashScreen();
 
-// Carregamento sequencial para evitar erro 429
-(async () => {
-    try {
 // Carregamento sequencial para evitar erro 429
 (async () => {
     try {
@@ -301,3 +325,55 @@ function setupBasicFeatures() {
     // Implementar funcionalidades básicas aqui se necessário
     console.log('Khaneco rodando em modo básico');
 }
+
+// Função de emergência para criar ícone da caneca se a interface não carregar
+window.createEmergencyIcon = function() {
+    // Remover ícone existente se houver
+    const existing = document.querySelector('.khaneco-emergency-icon');
+    if (existing) existing.remove();
+    
+    const emergencyIcon = document.createElement('div');
+    emergencyIcon.className = 'khaneco-emergency-icon';
+    emergencyIcon.style.cssText = `
+        position: fixed !important;
+        top: 20px !important;
+        right: 20px !important;
+        width: 60px !important;
+        height: 60px !important;
+        background: white !important;
+        border: 3px solid #dc2626 !important;
+        border-radius: 50% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        cursor: pointer !important;
+        z-index: 999999 !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+        font-size: 30px !important;
+        transition: all 0.3s ease !important;
+    `;
+    
+    emergencyIcon.innerHTML = '☕';
+    emergencyIcon.title = 'Clique para abrir o menu Khaneco';
+    
+    emergencyIcon.addEventListener('click', () => {
+        if (window.khanecoUI && window.khanecoUI.showPanel) {
+            window.khanecoUI.showPanel();
+        } else {
+            alert('🎯 Khaneco Menu\n\nInfelizmente a interface principal não carregou completamente.\nTente recarregar a página ou use os comandos do console:\n\n• openKhanecoMenu()\n• recreateKhanecoIcon()');
+        }
+    });
+    
+    emergencyIcon.addEventListener('mouseenter', () => {
+        emergencyIcon.style.transform = 'scale(1.1)';
+    });
+    
+    emergencyIcon.addEventListener('mouseleave', () => {
+        emergencyIcon.style.transform = 'scale(1)';
+    });
+    
+    document.body.appendChild(emergencyIcon);
+    console.log('🚨 Ícone de emergência criado! Clique no ☕ para abrir o menu.');
+    
+    return emergencyIcon;
+};
